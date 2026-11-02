@@ -12,64 +12,30 @@ Write and deploy a Solidity contract on an Ethereum test network that lets each 
 
 ## Solidity program
 
-Create `BankAccount.sol` in Remix and paste this contract:
+Use the provided [Bank.sol](Bank.sol) file. It is the code supplied for this practical. It has an owner-only `Deposit`, `Withdraw`, and `showBalance`.
 
-```solidity
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
-
-contract BankAccount {
-    mapping(address => uint256) private balances;
-
-    event Deposited(address indexed account, uint256 amount);
-    event Withdrawn(address indexed account, uint256 amount);
-
-    function deposit() external payable {
-        require(msg.value > 0, "Deposit must be greater than zero");
-        balances[msg.sender] += msg.value;
-        emit Deposited(msg.sender, msg.value);
-    }
-
-    function withdraw(uint256 amount) external {
-        require(amount > 0, "Withdrawal must be greater than zero");
-        require(amount <= balances[msg.sender], "Insufficient account balance");
-
-        // Update the user's balance before sending ETH (checks-effects-interactions).
-        balances[msg.sender] -= amount;
-        (bool sent, ) = payable(msg.sender).call{value: amount}("");
-        require(sent, "ETH transfer failed");
-        emit Withdrawn(msg.sender, amount);
-    }
-
-    function showBalance() external view returns (uint256) {
-        return balances[msg.sender];
-    }
-}
-```
-
-The returned amounts are in **wei**. `1 ether = 1,000,000,000,000,000,000 wei`. Remix lets you choose the value unit when calling payable functions; alternatively enter the amount in wei.
+**Important behavior of this exact code:** `Withdraw()` is payable and decreases the internal `Balance` by `msg.value`, but it does not transfer ETH from the contract to the owner. It also needs a positive transaction value to be called. Therefore, it demonstrates a balance update but is not a real ETH withdrawal implementation. Do not send real funds to it. If your instructor expects an actual transfer, ask whether they want the contract corrected before deployment.
 
 ## Procedure in Remix
 
-1. Open Remix IDE and create `BankAccount.sol`.
-2. Paste the contract and save it.
+1. Open Remix IDE and create `Bank.sol`.
+2. Copy the contents of the accompanying `Bank.sol` file into Remix and save it.
 3. Open **Solidity Compiler**, select a compiler version `0.8.20` or compatible `0.8.x`, and compile `BankAccount.sol`.
 4. Open **Deploy & Run Transactions**. In the environment selector, choose the injected MetaMask provider (the label can vary by Remix version).
 5. In MetaMask, confirm the selected network is Sepolia and approve the connection request. Check the account shown in Remix.
-6. Select `BankAccount` and click **Deploy**. Review the wallet confirmation and approve the testnet deployment.
+6. Select `Bank` and click **Deploy**. Review the wallet confirmation and approve the testnet deployment.
 7. After deployment confirms, expand the deployed contract in Remix. Record the contract address and deployment transaction hash.
-8. To deposit, enter an amount in the Remix **Value** field and choose the `ether` unit. Click `deposit` and approve the transaction. Example: `0.01 ether` if the test wallet has enough Sepolia ETH for both deposit and gas.
-9. Click `showBalance` and record the returned balance in wei. It should reflect the deposit made by the current account.
-10. Enter a withdrawal amount in wei in the `withdraw` field, such as `1000000000000000` for `0.001 ether`, and submit. Confirm the transaction in MetaMask.
-11. Call `showBalance` again. The recorded balance should decrease by the amount withdrawn (network gas is paid separately by the caller).
-12. Optional check: try withdrawing more than the displayed balance. The transaction should revert with `Insufficient account balance`.
-13. Record gas used and transaction fee for deployment, deposit, and withdrawal from transaction details.
+8. To deposit, enter a small amount in Remix's **Value** field and choose the `ether` unit. Click `Deposit` and approve the transaction. Use Sepolia test ETH only.
+9. Call `showBalance` from the deploying owner account and record the returned balance in wei. A different account should fail the owner check.
+10. To demonstrate the code's `Withdraw`, enter a small positive amount in the **Value** field, then click `Withdraw` and confirm. The call decreases `Balance` by the `msg.value` but does not send funds back; the transaction itself sends that `msg.value` into the contract. Treat this as a code demonstration only.
+11. Record gas used and transaction fee for deployment, deposit, and the balance-update call from transaction details.
 
 ## Expected observations
 
 - Each wallet address has a separate balance.
-- A user can withdraw only from their own recorded balance.
-- An over-balance withdrawal reverts.
+- Only the deploying owner can deposit, withdraw/update the recorded balance, or read it.
+- Solidity 0.8 checked arithmetic causes a withdrawal amount larger than `Balance` to revert due to underflow.
+- This provided `Withdraw` does not transfer ETH out; the amount sent with the call goes into the contract.
 - Deployment and state-changing calls consume gas; `showBalance` is a read-only call and normally does not create an on-chain transaction when called locally in Remix.
 
 ## Practical journal checklist
